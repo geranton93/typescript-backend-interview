@@ -90,7 +90,14 @@ describe('StudentService', () => {
 
       const result = await service.findAll({ page: 1, limit: 50 })
 
-      expect(result.data).toEqual(students)
+      expect(result.data).toEqual([
+        {
+          id: mockStudent.id,
+          email: mockStudent.email,
+          firstName: mockStudent.firstName,
+          lastName: mockStudent.lastName,
+        },
+      ])
       expect(result.meta).toEqual({
         total: 1,
         page: 1,
@@ -154,7 +161,12 @@ describe('StudentService', () => {
 
       const result = await service.findOne('student-1')
 
-      expect(result).toEqual(mockStudent)
+      expect(result).toEqual({
+        id: mockStudent.id,
+        email: mockStudent.email,
+        firstName: mockStudent.firstName,
+        lastName: mockStudent.lastName,
+      })
       expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
         where: { id: 'student-1', role: UserRole.STUDENT },
       })
@@ -433,7 +445,12 @@ describe('StudentService', () => {
 
       const result = await service.getSchedule('student-1')
 
-      expect(result.student).toEqual(mockStudent)
+      expect(result.student).toEqual({
+        id: mockStudent.id,
+        email: mockStudent.email,
+        firstName: mockStudent.firstName,
+        lastName: mockStudent.lastName,
+      })
       // Expect flattened teacher structure
       const expectedSection = {
         ...mockSection,

@@ -1,5 +1,4 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { User } from '@prisma/client'
 import PDFDocument = require('pdfkit')
 import { DayOfWeek, UserRole } from 'src/common/enums'
 
@@ -14,6 +13,7 @@ import {
   SectionWithRelations,
   SectionFlattened,
   TeacherFlattened,
+  StudentData,
 } from 'src/types/service-types'
 
 import { EnrollSectionDto } from './dto/enroll-section.dto'
@@ -27,7 +27,7 @@ export class StudentService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filter: StudentFilterDto): Promise<PaginatedResult<User>> {
+  async findAll(filter: StudentFilterDto): Promise<PaginatedResult<StudentData>> {
     this.logger.debug(`Finding all students with filters: ${JSON.stringify(filter)}`)
 
     const { page = 1, limit = 50, ...filterOptions } = filter
@@ -45,7 +45,7 @@ export class StudentService {
         : {}),
     }
 
-    const [data, total] = await Promise.all([
+    const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where: { ...where, role: UserRole.STUDENT },
         skip,
@@ -56,6 +56,13 @@ export class StudentService {
     ])
 
     const totalPages = Math.ceil(total / limit)
+
+    const data = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    }))
 
     return {
       data,
@@ -70,7 +77,7 @@ export class StudentService {
     }
   }
 
-  async findOne(studentId: string): Promise<User> {
+  async findOne(studentId: string): Promise<StudentData> {
     this.logger.debug(`Finding student: ${studentId}`)
     const student = await this.prisma.user.findFirst({
       where: { id: studentId, role: UserRole.STUDENT },
@@ -81,7 +88,12 @@ export class StudentService {
       throw new NotFoundException(`Cannot find student: Student with ID ${studentId} does not exist`)
     }
 
-    return student
+    return {
+      id: student.id,
+      email: student.email,
+      firstName: student.firstName,
+      lastName: student.lastName,
+    }
   }
 
   async getSchedule(studentId: string): Promise<StudentSchedule> {

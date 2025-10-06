@@ -20,12 +20,15 @@ import { SectionMeetingDto } from 'src/sections/dto/section-meeting.dto'
 import { SectionDto } from 'src/sections/dto/section.dto'
 import { SubjectDto } from 'src/subjects/dto/subject.dto'
 import { TeacherDto } from 'src/teachers/dto/teacher.dto'
+import { createPaginatedResponseDto } from 'src/common/dto/paginated-response.dto'
 
 import { EnrollSectionDto } from './dto/enroll-section.dto'
 import { StudentFilterDto } from './dto/student-filter.dto'
 import { StudentScheduleDto } from './dto/student-schedule.dto'
 import { StudentDto } from './dto/student.dto'
 import { StudentService } from './student.service'
+
+const PaginatedStudentDto = createPaginatedResponseDto(StudentDto)
 
 @ApiTags('Students')
 @ApiExtraModels(StudentScheduleDto, StudentDto, SectionDto, SectionMeetingDto, SubjectDto, TeacherDto, ClassroomDto)
@@ -34,8 +37,9 @@ export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
   @Get()
+  @Serialize(PaginatedStudentDto)
   @ApiOperation({ summary: 'List students' })
-  @ApiOkResponse({ type: StudentDto, isArray: true })
+  @ApiOkResponse({ type: PaginatedStudentDto })
   async findAll(@Query() filter: StudentFilterDto) {
     const data = await this.studentService.findAll(filter)
     return { data }

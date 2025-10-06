@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
-import { Classroom } from '@prisma/client'
 
 import { PrismaService } from 'src/prisma/prisma.service'
+import { ClassroomData } from 'src/types/service-types'
 
 import { ClassroomFilterDto } from './dto/classroom-filter.dto'
 
@@ -9,8 +9,8 @@ import { ClassroomFilterDto } from './dto/classroom-filter.dto'
 export class ClassroomService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filter: ClassroomFilterDto): Promise<Classroom[]> {
-    return this.prisma.classroom.findMany({
+  async findAll(filter: ClassroomFilterDto): Promise<ClassroomData[]> {
+    const classrooms = await this.prisma.classroom.findMany({
       where: {
         ...(filter.building ? { building: { contains: filter.building, mode: 'insensitive' } } : {}),
         ...(filter.name
@@ -24,5 +24,13 @@ export class ClassroomService {
       },
       orderBy: [{ building: 'asc' }, { room: 'asc' }],
     })
+
+    return classrooms.map(classroom => ({
+      id: classroom.id,
+      name: classroom.name,
+      building: classroom.building,
+      room: classroom.room,
+      capacity: classroom.capacity,
+    }))
   }
 }

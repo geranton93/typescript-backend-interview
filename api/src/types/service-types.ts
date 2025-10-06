@@ -1,14 +1,4 @@
-import {
-  User,
-  Student,
-  Teacher,
-  Subject,
-  Classroom,
-  Section,
-  SectionMeeting,
-  Enrollment,
-  Prisma,
-} from '@prisma/client'
+import { User, Student, Teacher, Subject, Classroom, Section, SectionMeeting, Enrollment, Prisma } from '@prisma/client'
 import { DayOfWeek } from '../common/enums'
 
 // Pagination types
@@ -79,7 +69,7 @@ export type EnrollmentWithSection = Enrollment & {
 
 // Student schedule response
 export interface StudentSchedule {
-  student: User
+  student: StudentData
   sections: SectionFlattened[]
 }
 
@@ -119,4 +109,29 @@ export interface SectionForConflictCheck {
 export type SectionWithMeetings = Section & {
   subject: Subject
   meetings: SectionMeeting[]
+}
+
+// Subject service type
+export interface SubjectData {
+  id: string
+  code: string
+  title: string
+  description: string | null
+}
+
+// Classroom service type
+export interface ClassroomData {
+  id: string
+  name: string
+  building: string
+  room: string
+  capacity: number | null
+}
+
+// Student/User service type
+export interface StudentData {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
 }
