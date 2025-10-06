@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { DayOfWeek } from '@prisma/client'
 import { SectionService } from './section.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { DayOfWeek, SectionStatus } from '../common/enums'
 
 describe('SectionService', () => {
   let service: SectionService
@@ -16,7 +16,7 @@ describe('SectionService', () => {
     id: 'section-1',
     code: 'CHEM101-01',
     capacity: 30,
-    status: 'ACTIVE',
+    status: SectionStatus.ACTIVE,
     term: 'Fall 2024',
     year: 2024,
     startDate: new Date('2024-08-26'),

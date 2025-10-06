@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { DayOfWeek } from '@prisma/client'
 import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator'
+import { DayOfWeek } from '../../common/enums'
 
 export class SectionFilterDto {
   @ApiPropertyOptional({ description: 'Filter sections by subject identifier', format: 'uuid' })

@@ -7,9 +7,9 @@ import {
   Section,
   SectionMeeting,
   Enrollment,
-  DayOfWeek,
   Prisma,
 } from '@prisma/client'
+import { DayOfWeek } from '../common/enums'
 
 // Pagination types
 export interface PaginationMeta {

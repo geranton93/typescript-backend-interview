@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
-import { DayOfWeek } from '@prisma/client'
 import { StudentService } from './student.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common'
+import { DayOfWeek, UserRole } from '../common/enums'
 
 describe('StudentService', () => {
   let service: StudentService
@@ -110,7 +110,7 @@ describe('StudentService', () => {
       expect(mockPrismaService.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            role: 'STUDENT',
+            role: UserRole.STUDENT,
             email: { contains: 'alice@example.edu', mode: 'insensitive' },
           }),
         }),
@@ -126,7 +126,7 @@ describe('StudentService', () => {
       expect(mockPrismaService.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            role: 'STUDENT',
+            role: UserRole.STUDENT,
             OR: expect.arrayContaining([
               { firstName: { contains: 'Alice', mode: 'insensitive' } },
               { lastName: { contains: 'Alice', mode: 'insensitive' } },
@@ -156,7 +156,7 @@ describe('StudentService', () => {
 
       expect(result).toEqual(mockStudent)
       expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
-        where: { id: 'student-1', role: 'STUDENT' },
+        where: { id: 'student-1', role: UserRole.STUDENT },
       })
     })
 

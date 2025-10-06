@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { DayOfWeek } from '@prisma/client'
 import { Expose, Transform } from 'class-transformer'
+import { DayOfWeek } from '../../common/enums'
 import { formatTime } from '../../utils'
 
 export class SectionMeetingDto {

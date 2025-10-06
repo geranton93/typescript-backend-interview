@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { DayOfWeek, User } from '@prisma/client'
+import { User } from '@prisma/client'
 import PDFDocument = require('pdfkit')
+import { DayOfWeek, UserRole } from 'src/common/enums'
 
 import { PrismaService } from 'src/prisma/prisma.service'
 import {
@@ -46,12 +47,12 @@ export class StudentService {
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
-        where: { ...where, role: 'STUDENT' },
+        where: { ...where, role: UserRole.STUDENT },
         skip,
         take: limit,
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       }),
-      this.prisma.user.count({ where: { ...where, role: 'STUDENT' } }),
+      this.prisma.user.count({ where: { ...where, role: UserRole.STUDENT } }),
     ])
 
     const totalPages = Math.ceil(total / limit)
@@ -72,7 +73,7 @@ export class StudentService {
   async findOne(studentId: string): Promise<User> {
     this.logger.debug(`Finding student: ${studentId}`)
     const student = await this.prisma.user.findFirst({
-      where: { id: studentId, role: 'STUDENT' },
+      where: { id: studentId, role: UserRole.STUDENT },
     })
 
     if (!student) {
@@ -125,7 +126,7 @@ export class StudentService {
       await this.prisma.$transaction(async tx => {
         // Verify student exists
         const student = await tx.user.findFirst({
-          where: { id: studentId, role: 'STUDENT' },
+          where: { id: studentId, role: UserRole.STUDENT },
         })
         if (!student) {
           throw new NotFoundException(`Cannot enroll: Student with ID ${studentId} does not exist`)
@@ -164,7 +165,7 @@ export class StudentService {
         }
 
         // Check for schedule conflicts
-        await this.ensureNoConflictingEnrollment(tx, studentId, section)
+        await this.ensureNoConflictingEnrollment(tx, studentId, section as any)
 
         // Check capacity (atomic check within transaction)
         if (section.capacity != null && section._count.enrollments >= section.capacity) {
@@ -263,7 +264,7 @@ export class StudentService {
         document.text(`Instructor: ${section.teacher.firstName} ${section.teacher.lastName}`)
         document.text(`Classroom: ${section.classroom.name} - ${section.classroom.building} ${section.classroom.room}`)
 
-        const groupedByDay = this.groupMeetingsByDay(section.meetings)
+        const groupedByDay = this.groupMeetingsByDay(section.meetings as any)
         document.text('Meetings:')
         groupedByDay.forEach(entry => {
           document.text(`  - ${entry.day}: ${entry.slots.join(', ')}`)
@@ -344,9 +345,10 @@ export class StudentService {
     const byDay = new Map<DayOfWeek, string[]>()
 
     meetings.forEach(meeting => {
-      const slots = byDay.get(meeting.day) ?? []
+      const day = meeting.day as DayOfWeek
+      const slots = byDay.get(day) ?? []
       slots.push(`${this.formatTime(meeting.startTime)} - ${this.formatTime(meeting.endTime)}`)
-      byDay.set(meeting.day, slots)
+      byDay.set(day, slots)
     })
 
     return Array.from(byDay.entries()).map(([day, slots]) => ({ day, slots }))
