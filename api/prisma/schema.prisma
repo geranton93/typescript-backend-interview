@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -13,11 +14,183 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email    String @unique
-  password String?
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
 
+enum SectionStatus {
+  DRAFT
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  SUSPENDED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  WITHDRAWN
+  COMPLETED
+}
+
+model Student {
+  userId                String         @id @db.Uuid
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentNumber         String         @unique
+  studentStatus         StudentStatus  @default(ACTIVE)
+  studentEnrollmentDate DateTime?      @db.Date
+  enrollments           Enrollment[]   @relation("StudentEnrollments")
+  createdAt             DateTime       @default(now()) @db.Timestamptz()
+  updatedAt             DateTime       @updatedAt @db.Timestamptz()
+
+  @@index([studentNumber])
+  @@index([studentStatus])
+  @@map("students")
+}
+
+model Teacher {
+  userId           String     @id @db.Uuid
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectionsTeaching Section[]  @relation("TeacherSections")
+  createdAt        DateTime   @default(now()) @db.Timestamptz()
+  updatedAt        DateTime   @updatedAt @db.Timestamptz()
+
+  @@map("teachers")
+}
+
+model User {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String          @unique
+  password           String?
+  firstName          String          @db.VarChar(100)
+  lastName           String          @db.VarChar(100)
+  role               UserRole
+  // Relations
+  student            Student?
+  teacher            Teacher?
+  createdAt          DateTime        @default(now()) @db.Timestamptz()
+  updatedAt          DateTime        @updatedAt @db.Timestamptz()
+  deletedAt          DateTime?       @db.Timestamptz()
+
+  @@index([lastName, firstName])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Subject {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String    @unique @db.VarChar(20)
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  sections    Section[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz()
+  updatedAt   DateTime  @updatedAt @db.Timestamptz()
+  deletedAt   DateTime? @db.Timestamptz() // Soft delete support
+
+  @@index([code])
+  @@map("subjects")
+}
+
+model Classroom {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @db.VarChar(100)
+  building  String    @db.VarChar(100)
+  room      String    @db.VarChar(50)
+  capacity  Int?
+  sections  Section[]
   createdAt DateTime  @default(now()) @db.Timestamptz()
   updatedAt DateTime  @updatedAt @db.Timestamptz()
+  deletedAt DateTime? @db.Timestamptz() // Soft delete support
+
+  @@unique([building, room])
+  @@index([building])
+  @@map("classrooms")
+}
+
+model Section {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String
+  capacity    Int?
+  status      SectionStatus    @default(ACTIVE)
+  term        String?          @db.VarChar(50) // e.g., "Fall 2024", nullable for existing records
+  year        Int?             // e.g., 2024, nullable for existing records
+  startDate   DateTime?        @db.Date // Nullable for existing records
+  endDate     DateTime?        @db.Date // Nullable for existing records
+  subjectId   String           @db.Uuid
+  teacherId   String           @db.Uuid
+  classroomId String           @db.Uuid
+  subject     Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  teacher     Teacher          @relation("TeacherSections", fields: [teacherId], references: [userId], onDelete: Restrict, onUpdate: Cascade)
+  classroom   Classroom        @relation(fields: [classroomId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  meetings    SectionMeeting[]
+  enrollments Enrollment[]
+  version     Int              @default(0) // Optimistic locking
+  createdAt   DateTime         @default(now()) @db.Timestamptz()
+  updatedAt   DateTime         @updatedAt @db.Timestamptz()
+  deletedAt   DateTime?        @db.Timestamptz() // Soft delete support
+
+  @@unique([code])
+  @@index([subjectId])
+  @@index([teacherId])
+  @@index([classroomId])
+  @@index([status])
+  @@index([term, year])
+  @@map("sections")
+}
+
+model SectionMeeting {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sectionId String    @db.Uuid
+  day       DayOfWeek
+  startTime DateTime  @db.Time(6)
+  endTime   DateTime  @db.Time(6)
+  section   Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now()) @db.Timestamptz()
+  updatedAt DateTime  @updatedAt @db.Timestamptz()
+
+  @@unique([sectionId, day, startTime, endTime])
+  @@index([sectionId])
+  @@index([day])
+  @@map("section_meetings")
+}
+
+model Enrollment {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId  String           @db.Uuid
+  sectionId  String           @db.Uuid
+  status     EnrollmentStatus @default(ENROLLED)
+  grade      String?          @db.VarChar(5) // e.g., "A", "B+", "C-"
+  enrolledAt DateTime         @default(now()) @db.Timestamptz()
+  droppedAt  DateTime?        @db.Timestamptz() // When student dropped the section
+  completedAt DateTime?       @db.Timestamptz() // When course was completed
+  student    Student          @relation("StudentEnrollments", fields: [studentId], references: [userId], onDelete: Cascade)
+  section    Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime         @default(now()) @db.Timestamptz()
+  updatedAt  DateTime         @updatedAt @db.Timestamptz()
+
+  @@unique([studentId, sectionId])
+  @@index([studentId])
+  @@index([sectionId])
+  @@index([status])
+  @@index([studentId, enrolledAt])
+  @@map("enrollments")
 }

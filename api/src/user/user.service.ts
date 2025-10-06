@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { FilterUserDto } from './dto/user.dto'
 
@@ -6,7 +7,7 @@ import { FilterUserDto } from './dto/user.dto'
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getUsers(filter: FilterUserDto) {
+  async getUsers(filter: FilterUserDto): Promise<User[]> {
     const users = await this.prisma.user.findMany({
       where: {
         email: filter.email,

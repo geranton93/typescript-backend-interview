@@ -1,12 +1,15 @@
-import { NestFactory } from '@nestjs/core'
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common'
-import { NestExpressApplication } from '@nestjs/platform-express'
 import { ConfigService } from '@nestjs/config'
+import { NestFactory } from '@nestjs/core'
+import { NestExpressApplication } from '@nestjs/platform-express'
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { NextFunction, Request, Response } from 'express'
+import helmet from 'helmet'
+import { json, urlencoded } from 'express'
 
 import { AppModule } from './app.module'
-
 import type { AppConfigType } from './config'
+import { PrismaService } from './prisma/prisma.service'
 
 async function bootstrap() {
   const logger = new Logger('bootstrap')
@@ -14,11 +17,27 @@ async function bootstrap() {
     logger: process.env.NODE_ENV === 'development' ? ['debug', 'error', 'log', 'verbose', 'warn'] : ['error', 'warn'],
   })
 
-  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }))
-  app.enableVersioning({
-    type: VersioningType.URI,
-  })
+  // Security headers
+  app.use(helmet())
+
+  // Request size limits
+  app.use(json({ limit: '10mb' }))
+  app.use(urlencoded({ extended: true, limit: '10mb' }))
+
+  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  app.enableVersioning({ type: VersioningType.URI })
   app.setGlobalPrefix('api')
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('University Scheduling API')
+    .setDescription('Endpoints for managing students, sections, and scheduling constraints.')
+    .setVersion('1.0.0')
+    .build()
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig)
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  })
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.removeHeader('x-powered-by')
@@ -32,12 +51,14 @@ async function bootstrap() {
   app.enableCors({
     origin: '*',
     credentials: true,
-    // allows the frontend to access the Authorization and Authorization-Refresh headers
     exposedHeaders: ['Authorization', 'Authorization-Refresh'],
   })
 
-  await app.listen(apiPort, '0.0.0.0')
+  const prismaService = app.get(PrismaService)
+  await prismaService.enableShutdownHooks(app)
 
+  await app.listen(apiPort, '0.0.0.0')
   logger.log(`Application is running on: ${await app.getUrl()}`)
 }
+
 bootstrap()

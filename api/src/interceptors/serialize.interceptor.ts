@@ -3,16 +3,19 @@ import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { plainToInstance } from 'class-transformer'
 
-interface ClassConstructor {
-  new (...args: any[]): {}
+type ClassConstructor<T = object> = new (...args: unknown[]) => T
+
+interface ApiResponse<T = unknown> {
+  data: T | T[]
+  [key: string]: unknown
 }
 
-export class SerializeInterceptor implements NestInterceptor {
-  constructor(private dto: any) {}
+export class SerializeInterceptor<T extends object> implements NestInterceptor<unknown, ApiResponse<T>> {
+  constructor(private dto: ClassConstructor<T>) {}
 
-  intercept(context: ExecutionContext, handler: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, handler: CallHandler): Observable<ApiResponse<T>> {
     return handler.handle().pipe(
-      map((response: { data: any }) => {
+      map((response: ApiResponse<unknown>) => {
         if (Array.isArray(response.data)) {
           return {
             ...response,
@@ -35,6 +38,6 @@ export class SerializeInterceptor implements NestInterceptor {
   }
 }
 
-export function Serialize(dto: ClassConstructor) {
+export function Serialize<T extends object>(dto: ClassConstructor<T>) {
   return UseInterceptors(new SerializeInterceptor(dto))
 }
